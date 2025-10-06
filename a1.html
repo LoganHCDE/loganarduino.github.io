@@ -4,15 +4,97 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, maximum-scale=1.0" />
 
-    <title>Example Student's HCDE 439 Physical Computing Page!</title>
+    <title>Assignment 1 Blink!</title>
 
     <link href="style.css" rel="stylesheet" type="text/css" />
   </head>
   <body>
-    <h1>Example Student's Assignment 1!</h1>
+    <h1>Assignment 1 Blink!</h1>
     <div class="header">
-      <img src="red-panda.jpg" />
       <p>Here is all the documentation for assignment 1!</p>
     </div>
+    <section class="gallery">
+      <figure>
+        <img src="blink set up.jpg" alt="Blink setup photo" />
+        <figcaption>Blink setup — I found having a good amount of space and using the same rows for each LED to be the simplest.</figcaption>
+      </figure>
+
+      <figure>
+        <img src="blink schematic.jpg" alt="Blink schematic" />
+        <figcaption>Blink schematic — I calculated 160 ohms, and found that 220 ohms resistor was the best for this case.</figcaption>
+      </figure>
+
+      <figure>
+        <img src="GIF.gif" alt="Blink animation GIF" />
+        <figcaption>Blink animation — GIF showing the LED blinking. Red, green, and blue are the three light colors that can make any color, so I used those.</figcaption>
+      </figure>
+    </section>
+    <section class="code-used">
+      <h2>Code used</h2>
+      <pre><code>
+// An array to hold the pin numbers for the LEDs.
+int ledPins[] = {13, 12, 11};
+
+// The total number of LEDs in array.
+int ledCount = 3;
+
+// Global Delay
+int animationDelay = 150;
+
+// Setup function
+void setup() {
+  // Loop through each of the pins
+  for (int i = 0; i &lt; ledCount; i++) {
+    // Set each LED pin as an output.
+    pinMode(ledPins[i], OUTPUT);
+  }
+}
+
+// The loop function runs over and over again forever.
+void loop() {
+  // --- Scan Forward ---
+  // Loop from the first LED to the last.
+  for (int i = 0; i &lt; ledCount; i++) {
+    digitalWrite(ledPins[i], HIGH); // Turn the current LED on.
+    delay(animationDelay);          // Wait for a moment.
+    digitalWrite(ledPins[i], LOW);  // Turn the current LED off.
+  }
+
+  // --- Scan Backward ---
+  // Loop from the second-to-last LED back to the second one.
+  for (int i = ledCount - 2; i &gt; 0; i--) {
+    digitalWrite(ledPins[i], HIGH); // Turn the current LED on.
+    delay(animationDelay);          // Wait for a moment.
+    digitalWrite(ledPins[i], LOW);  // Turn the current LED off.
+  }
+}
+      </code></pre>
+    <section class="answers">
+      <h2>Answer to questions</h2>
+      <ol>
+        <li>
+          <strong>Draw a graph where the X axis is time and the Y axis is voltage across the LEDs.</strong>
+          <p>Draw a line for each of your 3 LEDs showing the voltage pulses as they turn on and off in sequence (each LED's line will be a series of square pulses staggered in time to match the scan forward and backward behavior).</p>
+          <figure>
+            <img src="QUESTION 1.jpg" alt="Question 1 graph" />
+          </figure>
+        </li>
+
+        <li>
+          <strong>How many LEDs could you blink independently with your Arduino? How much current would that draw?</strong>
+          <p>There are 14 sections for connecting unique LEDs. That would draw about 280 milliampere (assuming ~20 mA per LED).</p>
+        </li>
+
+        <li>
+          <strong>How fast do you need to blink your LEDs until you no longer can tell that they are blinking?</strong>
+          <p>At least 30 to 60 times a second (30–60 Hz), which aligns with common perceptual frame rates where flicker becomes difficult to notice.</p>
+        </li>
+
+        <li>
+          <strong>Did you use AI tools in completing this assignment?</strong>
+          <p>I tried to use Gemini to help build the circuit, but that didn't fully work. I asked it to find relevant videos which helped a lot. I also used Gemini to help fix my code; it annotated some of my code and I kept and edited those annotations afterward.</p>
+        </li>
+      </ol>
+    </section>
   </body>
 </html>
