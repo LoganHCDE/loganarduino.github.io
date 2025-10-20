@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, maximum-scale=1.0" />
+
+    <title>Example Student's HCDE 439 Physical Computing Page!</title>
+
+    <link href="style.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body>
+    <h1>Example Student's Assignment 2!</h1>
+    <div class="header">
+      <p>Here is all the documentation for assignment 2!</p>
+    </div>
+    <section class="gallery">
+      <figure>
+        <img src="fade set up.jpg" alt="Setup photo" />
+        <figcaption>Setup of arduino board</figcaption>
+      </figure>
+      <figure>
+        <img src="fade schematic.jpg" alt="Schematic" />
+        <figcaption>Schematic & calculation of proper resistance</figcaption>
+      </figure>
+      <figure>
+        <img src="giffy.gif" alt="Demo animation" />
+        <figcaption>Gif of fade setup working</figcaption>
+      </figure>
+    </section>
+    <section class="code-used">
+      <h2>Code used</h2>
+      <pre><code>
+// This code will light up three LEDs when the button is pressed, and then fade after 2 seconds.
+
+// constant for pin 6, green LED.
+const int ledPin1 = 6;
+
+
+// constant for pin 5, Yellow LED.
+const int ledPin2 = 5; 
+
+// constant for pin 9, red LED.
+const int ledPin3 = 9; 
+
+
+// constant for pin 3, for Button.
+
+const int buttonPin = 3;
+
+// The setup() function 
+
+void setup() {
+
+  //  pin 6 setup
+  pinMode(ledPin1, OUTPUT);
+
+
+  //  pin 5 setup
+  pinMode(ledPin2, OUTPUT);
+
+
+  //  pin 9 setup
+  pinMode(ledPin3, OUTPUT);
+
+
+  //  button setup
+  pinMode(buttonPin, INPUT_PULLUP); 
+
+}
+
+
+// The loop() function runs continuously after setup() is complete.
+
+void loop() {
+
+  // see if button is High or Low
+  int buttonState = digitalRead(buttonPin);
+
+
+  // Check if the button is being pressed
+  if (buttonState == LOW) {
+
+
+
+    // turn on pin 6
+    digitalWrite(ledPin1, HIGH);
+
+
+    // turn on pin 5
+    digitalWrite(ledPin2, HIGH);
+
+    // turn on pin 9
+    digitalWrite(ledPin3, HIGH);
+
+
+    // Let 2ds stay on for 2 seconds
+    delay(200);
+
+
+    // for loop for decreasing brightness level
+    for (int brightness = 255; brightness >= 0; brightness--) {
+
+      // Set brightness for pin 6
+      analogWrite(ledPin1, brightness);
+
+
+      // Set brightness for pin 5
+      analogWrite(ledPin2, brightness);
+
+
+      // Set brightness for pin 9
+      analogWrite(ledPin3, brightness);
+
+
+      // increase fade time
+      delay(10);
+
+    }
+
+  }
+
+} 
+      </code></pre>
+    </section>
+    <section class="answers">
+      <h2>Answer to questions</h2>
+      <ol>
+        <li>
+          <strong>Question 1</strong>
+          <figure>
+        <img src="chart_2.jpg" alt="Schematic" />
+        <figcaption>chart for question 1</figcaption>
+      </figure>
+        </li>
+        <li>
+          <strong>Question 2</strong>
+          <p>This Question can't be answered because it depends on how often the LED's are activated. It would be infinite if the LED's were activated at all, and could be about 17 hours if they were activated again and again once the fading animation stops.</p>
+        </li>
+        <li>
+          <strong>Question 3</strong>
+          <p>It has a lower voltage than the expected voltage. I am assuming this is because of natural non perfect efficiency of the circuit</p>
+        </li>
+        <li>
+          <strong>Question 4</strong>
+          <p>I used Ai to help me code the project and I used it to troubleshoot my arduino board when it wasn't working. Very Suprised Gemini 2.5 pro was able to help out with the physical layout of my board.</p>
+        </li>
+      </ol>
+    </section>
+  </body>
+</html>
