@@ -4,122 +4,114 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, maximum-scale=1.0" />
 
-    <title>Example Student's HCDE 439 Physical Computing Page!</title>
+    <title>Logan's HCDE 439 Physical Computing Page!</title>
 
     <link href="style.css" rel="stylesheet" type="text/css" />
   </head>
   <body>
-    <h1>Example Student's Assignment 2!</h1>
+    <h1>Logan's Assignment 2!</h1>
     <div class="header">
       <p>Here is all the documentation for assignment 2!</p>
     </div>
     <section class="gallery">
       <figure>
-        <img src="fade set up.jpg" alt="Setup photo" />
+        <img src="inputsetup.jpg" alt="Setup photo" />
         <figcaption>Setup of arduino board</figcaption>
       </figure>
       <figure>
-        <img src="fade schematic.jpg" alt="Schematic" />
+        <img src="inputshcematic.jpg" alt="Schematic" />
         <figcaption>Schematic & calculation of proper resistance</figcaption>
       </figure>
       <figure>
-        <img src="giffy.gif" alt="Demo animation" />
-        <figcaption>Gif of fade setup working</figcaption>
+        <img src="GifA3.gif" alt="Demo animation" />
+        <figcaption>Gif of temperature sensor working</figcaption>
       </figure>
     </section>
     <section class="code-used">
       <h2>Code used</h2>
       <pre><code>
-// This code will light up three LEDs when the button is pressed, and then fade after 2 seconds.
+#include <math.h> // used to compute average temperature per second
 
-// constant for pin 6, green LED.
-const int ledPin1 = 6;
+int const tempPin = A0;    // Pin for thermistor 
+int const redLed = 11;     // Pin for the "Hot" LED
+int const greenLed = 10;   // Pin for the "Room Temp" LED
+int const blueLed = 9;     // Pin for the "Cold" LED
 
+int const numSamples = 10; // Number of times to take temperature screenshot for average calc
 
-// constant for pin 5, Yellow LED.
-const int ledPin2 = 5; 
+int const R_NOMINAL = 10000;    // Resistance at nominal temperature (10k ohms)
+int const B_COEFFICIENT = 3950; // Beta coefficient of the thermistor
+float const TEMP_NOMINAL = 25.0; // expected Room temperature
 
-// constant for pin 9, red LED.
-const int ledPin3 = 9; 
+float const hotThreshold = 50.0;    // Anything at or above this is "Hot"
+float const coldThreshold = 20.0;   // Anything at or below this is "Cold"
 
-
-// constant for pin 3, for Button.
-
-const int buttonPin = 3;
-
-// The setup() function 
 
 void setup() {
-
-  //  pin 6 setup
-  pinMode(ledPin1, OUTPUT);
-
-
-  //  pin 5 setup
-  pinMode(ledPin2, OUTPUT);
-
-
-  //  pin 9 setup
-  pinMode(ledPin3, OUTPUT);
-
-
-  //  button setup
-  pinMode(buttonPin, INPUT_PULLUP); 
-
+  // Set LED pins as outputs
+  pinMode(redLed, OUTPUT);
+  pinMode(greenLed, OUTPUT);
+  pinMode(blueLed, OUTPUT);
 }
 
-
-// The loop() function runs continuously after setup() is complete.
-
 void loop() {
-
-  // see if button is High or Low
-  int buttonState = digitalRead(buttonPin);
-
-
-  // Check if the button is being pressed
-  if (buttonState == LOW) {
-
-
-
-    // turn on pin 6
-    digitalWrite(ledPin1, HIGH);
-
-
-    // turn on pin 5
-    digitalWrite(ledPin2, HIGH);
-
-    // turn on pin 9
-    digitalWrite(ledPin3, HIGH);
-
-
-    // Let 2ds stay on for 2 seconds
-    delay(200);
-
-
-    // for loop for decreasing brightness level
-    for (int brightness = 255; brightness >= 0; brightness--) {
-
-      // Set brightness for pin 6
-      analogWrite(ledPin1, brightness);
-
-
-      // Set brightness for pin 5
-      analogWrite(ledPin2, brightness);
-
-
-      // Set brightness for pin 9
-      analogWrite(ledPin3, brightness);
-
-
-      // increase fade time
-      delay(10);
-
-    }
-
+  long totalAdc = 0; // Store total Temperatures (before avg is calcuated)
+  for (int i = 0; i < numSamples; i++) {
+    // Start avg calc
+    totalAdc += analogRead(tempPin);
+    // Take total temp
+    delay(5); 
+    // delay next sample by 5 ms
   }
 
-} 
+void loop() {
+  long totalAdc = 0; // Store total of readings
+  
+  for (int i = 0; i < numSamples; i++) {
+    // Start averaging loop
+    int currentReading = analogRead(tempPin); // read pin temperature
+    long mappedReading = map(currentReading, 0, 1023, 0, 1023);  // maps the pin temperature
+        totalAdc += mappedReading;
+    delay(5); // delay next sample by 5 ms
+  }
+
+  float avgAdc = (float)totalAdc / numSamples; // calcuates average temp in 1 second interval
+
+
+  float resistance = R_NOMINAL * (avgAdc / (1023.0 - avgAdc)); //   Calculates the thermistor's current resistance using the average
+
+  // *AI Wrote this section*
+  float steinhart;  // Calculate temperature using the B-parameter equation (Steinhart-Hart)
+  steinhart = resistance / R_NOMINAL;     // (R / R0)
+  steinhart = log(steinhart);             // ln(R / R0)
+  steinhart /= B_COEFFICIENT;             // 1/B * ln(R / R0)
+  steinhart += 1.0 / (TEMP_NOMINAL + 273.15); // + (1 / T0) in Kelvin
+  steinhart = 1.0 / steinhart;            // Invert to get temperature in Kelvin
+  float temperatureC = steinhart - 273.15; // Convert to Celsius
+  // *End of section*
+
+  // 4. Check the temperature and light the correct LED
+  if (temperatureC >= hotThreshold) {
+    // if hot, turn on red LED.
+    digitalWrite(redLed, HIGH);
+    digitalWrite(greenLed, LOW);
+    digitalWrite(blueLed, LOW);
+  }
+  else if (temperatureC <= coldThreshold) {
+    // if cold, turn on blue LED
+    digitalWrite(redLed, LOW);
+    digitalWrite(greenLed, LOW);
+    digitalWrite(blueLed, HIGH);
+  }
+  else {
+    // otherwise, keep green LED on
+    digitalWrite(redLed, LOW);
+    digitalWrite(greenLed, HIGH);
+    digitalWrite(blueLed, LOW);
+  }
+
+  delay(250); // needed delay to prevent flickering
+}
       </code></pre>
     </section>
     <section class="answers">
@@ -127,22 +119,20 @@ void loop() {
       <ol>
         <li>
           <strong>Question 1</strong>
-          <figure>
-        <img src="chart_2.jpg" alt="Schematic" />
-        <figcaption>chart for question 1</figcaption>
-      </figure>
-        </li>
+            <p>It can be either, although making it R2 would mean that it is connected to the ground instead of 5v, which would effect the circuit layout. Example equation for R1: Vout​=5V×(20kΩ/(10kΩ+20kΩ)) Vout​=5V×(20/30) Vout​=5V×0.66≈3.33V. Example equation for R2: Vout​=5V×(10kΩ/(20kΩ+10kΩ)) Vout​=5V×(10/30) Vout​=5V×0.33≈1.67V </p>
+=        </li>
         <li>
           <strong>Question 2</strong>
-          <p>This Question can't be answered because it depends on how often the LED's are activated. It would be infinite if the LED's were activated at all, and could be about 17 hours if they were activated again and again once the fading animation stops.</p>
+                <img src="inputgraph.jpg" alt="Schematic" />
+                <figcaption>graph of voltage of voltage divider for GIF</figcaption>
         </li>
         <li>
           <strong>Question 3</strong>
-          <p>It has a lower voltage than the expected voltage. I am assuming this is because of natural non perfect efficiency of the circuit</p>
+          <p>This would make the temperature readings more precise, but it would require changing the numbers in the map function. Instead of using 1023 because there are 1024 possibilites with 10 bit code(2^10), the number would have to be 65536 instead because there are more possibilites (2^16).</p>
         </li>
         <li>
-          <strong>Question 4</strong>
-          <p>I used Ai to help me code the project and I used it to troubleshoot my arduino board when it wasn't working. Very Suprised Gemini 2.5 pro was able to help out with the physical layout of my board.</p>
+          <strong>AI mark</strong>
+          <p>I used Ai to ask questions and fix some of the issues in my work. I also used AI to write part of the code(it is marked), and I also used it to help add the average temperature reading, which was needed since the temperature reading kept flickering without it, the avg made it more consisent.</p>
         </li>
       </ol>
     </section>
