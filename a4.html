@@ -9,108 +9,167 @@
     <link href="style.css" rel="stylesheet" type="text/css" />
   </head>
   <body>
-    <h1>Logan's Assignment 3!</h1>
+    <h1>Logan's Assignment 4!</h1>
     <div class="header">
-      <p>Here is all the documentation for assignment 3!</p>
+      <p>Here is all the documentation for assignment 4!</p>
     </div>
     <section class="gallery">
       <figure>
-        <img src="inputsetup.jpg" alt="Setup photo" />
+        <img src="setup_4.jpg" alt="Setup photo" />
         <figcaption>Setup of arduino board</figcaption>
       </figure>
       <figure>
-        <img src="inputshcematic.jpg" alt="Schematic" />
-        <figcaption>Schematic & calculation of proper resistance</figcaption>
+        <img src="schematic_4.jpg" alt="Schematic" style="max-width: 400px; height: auto; display: block;" />
+        <figcaption>Schematic </figcaption>
       </figure>
       <figure>
-        <img src="GifA3.gif" alt="Demo animation" />
-        <figcaption>Gif of temperature sensor working</figcaption>
+        <video controls style="max-width: 100%; height: auto;">
+          <source src="libary_video.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+        <figcaption>video of temperature sensor and display in action</figcaption>
       </figure>
     </section>
     <section class="code-used">
       <h2>Code used</h2>
       <pre><code>
-#include <math.h> // used to compute average temperature per second
 
-int const tempPin = A0;    // Pin for thermistor 
-int const redLed = 11;     // Pin for the "Hot" LED
-int const greenLed = 10;   // Pin for the "Room Temp" LED
-int const blueLed = 9;     // Pin for the "Cold" LED
+#include <LiquidCrystal.h>     // For the Display
+#include <SimpleKalmanFilter.h> // To make temperature outputs more consistent
 
-int const numSamples = 10; // Number of times to take temperature screenshot for average calc
+// DEFINE CONSTANTS & PINS
 
-int const R_NOMINAL = 10000;    // Resistance at nominal temperature (10k ohms)
-int const B_COEFFICIENT = 3950; // Beta coefficient of the thermistor
-float const TEMP_NOMINAL = 25.0; // expected Room temperature
+#define THERMISTOR_PIN A0  // Analog pin for the thermosister
+#define LED_PIN 3          // Red LED pin 3
 
-float const hotThreshold = 50.0;    // Anything at or above this is "Hot"
-float const coldThreshold = 20.0;   // Anything at or below this is "Cold"
+// Set temperature to make the LED turn on
+const float TEMP_THRESHOLD = 30.0;
+
+#define FIXED_RESISTOR 10000
+#define NOMINAL_RESISTANCE 100000
+#define NOMINAL_TEMP 25.0
+#define B_COEFFICIENT 3950
+
+// make temperature readings more consisent and smooth
+SimpleKalmanFilter tempFilter(2, 2, 0.01);
 
 
+// Character [0]: Degree Symbol (°)
+byte degree[8] = {
+  B00110,
+  B01001,
+  B01001,
+  B00110,
+  B00000,
+  B00000,
+  B00000,
+  B00000
+};
+
+// Character [1]: Warning Icon (!)
+byte warning[8] = {
+  B00000,
+  B00100,
+  B00100,
+  B00100,
+  B00100,
+  B00000,
+  B00100,
+  B00000
+};
+
+
+// Initialize the LiquidCrystal library 
+LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
+
+float celsius_filtered = 0.0;   // stores smoothed C Temperature
+float fahrenheit_filtered = 0.0; // stores smoothed F Temperature
+
+
+// SETUP FUNCTION
 void setup() {
-  // Set LED pins as outputs
-  pinMode(redLed, OUTPUT);
-  pinMode(greenLed, OUTPUT);
-  pinMode(blueLed, OUTPUT);
+  // Initialize the LCD (16 columns, 2 rows)
+  lcd.begin(16, 2);
+
+  // Create the custom characters and assign them to memory locations
+  lcd.createChar(0, degree); // degree symbol
+  lcd.createChar(1, warning);  // ! symbol
+
+  pinMode(LED_PIN, OUTPUT); 
+  digitalWrite(LED_PIN, LOW); // Start with LED off
+
+  lcd.print("Temp. Monitor");  // print startup message
+  lcd.setCursor(0, 1);  // go to second line
+  lcd.print("Initializing..."); // print startup message
+  delay(2000);  // keeps message long enough to read
 }
 
+
+// LOOP FUNCTION 
 void loop() {
-  long totalAdc = 0; // Store total Temperatures (before avg is calcuated)
-  for (int i = 0; i < numSamples; i++) {
-    // Start avg calc
-    totalAdc += analogRead(tempPin);
-    // Take total temp
-    delay(5); 
-    // delay next sample by 5 ms
+
+  // --- Temperature Reading ---
+ 
+  // Read the raw analog value (0-1023)
+  int adc_val = analogRead(THERMISTOR_PIN);
+
+  // Convert the voltage reading into a resistance value
+  float resistance = FIXED_RESISTOR * (1023.0 / (float)adc_val - 1.0);
+
+  // Convert resistance to temperature (in Celsius)
+  float steinhart;
+  steinhart = resistance / NOMINAL_RESISTANCE;     // (R/R0)
+  steinhart = log(steinhart);                      // ln(R/R0)
+  steinhart /= B_COEFFICIENT;                      // 1/B * ln(R/R0)
+  steinhart += 1.0 / (NOMINAL_TEMP + 273.15);      // + 1/T0
+  steinhart = 1.0 / steinhart;                     // Invert to get T (in Kelvin)
+  float celsius_raw = steinhart - 273.15;          // Convert Kelvin to Celsius
+
+  // get a smoothed value
+  celsius_filtered = tempFilter.updateEstimate(celsius_raw);
+
+  // Convert filtered Celsius to Fahrenheit for display
+  fahrenheit_filtered = (celsius_filtered * 9.0 / 5.0) + 32.0;
+
+
+  // --- Display & Alert Logic ---
+  lcd.clear(); // Clear the screen for every new update
+ 
+  if (celsius_filtered > TEMP_THRESHOLD) {
+    // --- ALERT STATE ---
+    digitalWrite(LED_PIN, HIGH); // Turn LED ON
+   
+    // Display a clear warning message
+    lcd.setCursor(0, 0); // Start on first line
+    lcd.write((uint8_t)1); // print !
+    lcd.print(" HIGH TEMP "); // print message
+    lcd.write((uint8_t)1);  // print !
+   
+    lcd.setCursor(0, 1); // start on second line
+    lcd.print("Temp: "); // print Temp:
+    lcd.print(celsius_filtered, 1); // Print the temperature
+    lcd.write((uint8_t)0); // print the Degree symbol
+    lcd.print("C"); // Print C
+   
+  } else {
+    // --- NORMAL STATE ---
+    digitalWrite(LED_PIN, LOW);  // Turn LED OFF
+   
+    // Line 1: Display Celsius
+    lcd.setCursor(0, 0); // start on first line
+    lcd.print("C: "); // print C:
+    lcd.print(celsius_filtered, 1); // Print with 1 decimal place
+    lcd.write((uint8_t)0); // print Degree symbol
+   
+    // Line 2: Display Fahrenheit
+    lcd.setCursor(0, 1); // start on second line
+    lcd.print("F: "); // print F:
+    lcd.print(fahrenheit_filtered, 1); // print 1 decimal place
+    lcd.write((uint8_t)0); // print Degree symbol
   }
 
-void loop() {
-  long totalAdc = 0; // Store total of readings
-  
-  for (int i = 0; i < numSamples; i++) {
-    // Start averaging loop
-    int currentReading = analogRead(tempPin); // read pin temperature
-    long mappedReading = map(currentReading, 0, 1023, 0, 1023);  // maps the pin temperature
-        totalAdc += mappedReading;
-    delay(5); // delay next sample by 5 ms
-  }
-
-  float avgAdc = (float)totalAdc / numSamples; // calcuates average temp in 1 second interval
-
-
-  float resistance = R_NOMINAL * (avgAdc / (1023.0 - avgAdc)); //   Calculates the thermistor's current resistance using the average
-
-  // *AI Wrote this section*
-  float steinhart;  // Calculate temperature using the B-parameter equation (Steinhart-Hart)
-  steinhart = resistance / R_NOMINAL;     // (R / R0)
-  steinhart = log(steinhart);             // ln(R / R0)
-  steinhart /= B_COEFFICIENT;             // 1/B * ln(R / R0)
-  steinhart += 1.0 / (TEMP_NOMINAL + 273.15); // + (1 / T0) in Kelvin
-  steinhart = 1.0 / steinhart;            // Invert to get temperature in Kelvin
-  float temperatureC = steinhart - 273.15; // Convert to Celsius
-  // *End of section*
-
-  // 4. Check the temperature and light the correct LED
-  if (temperatureC >= hotThreshold) {
-    // if hot, turn on red LED.
-    digitalWrite(redLed, HIGH);
-    digitalWrite(greenLed, LOW);
-    digitalWrite(blueLed, LOW);
-  }
-  else if (temperatureC <= coldThreshold) {
-    // if cold, turn on blue LED
-    digitalWrite(redLed, LOW);
-    digitalWrite(greenLed, LOW);
-    digitalWrite(blueLed, HIGH);
-  }
-  else {
-    // otherwise, keep green LED on
-    digitalWrite(redLed, LOW);
-    digitalWrite(greenLed, HIGH);
-    digitalWrite(blueLed, LOW);
-  }
-
-  delay(250); // needed delay to prevent flickering
+  // Delay for a short time to read display
+  delay(500);
 }
       </code></pre>
     </section>
@@ -119,20 +178,36 @@ void loop() {
       <ol>
         <li>
           <strong>Question 1</strong>
-            <p>It can be either, although making it R2 would mean that it is connected to the ground instead of 5v, which would effect the circuit layout. Example equation for R1: Vout​=5V×(20kΩ/(10kΩ+20kΩ)) Vout​=5V×(20/30) Vout​=5V×0.66≈3.33V. Example equation for R2: Vout​=5V×(10kΩ/(20kΩ+10kΩ)) Vout​=5V×(10/30) Vout​=5V×0.33≈1.67V </p>
-=        </li>
+            <img src="question1_4.jpg" alt="question 1 graph" />
+            <figcaption>question 1 graph, it would slowly increase consistentantly until 20 seconds later when it would drop down and increase again </figcaption>
         <li>
           <strong>Question 2</strong>
-                <img src="inputgraph.jpg" alt="Schematic" />
-                <figcaption>graph of voltage of voltage divider for GIF</figcaption>
+              <p>Throwout any readings that are unexpected.
+                previous = Previous temperature reading
+                current = Current temperature reading
+                next = Next temperature reading
+                if current > previous and current < next:
+                  current is valid
+                elif current < previous and current > next:
+                  current is valid
+                else:
+                  current is invalid, do not display. 
+              </p>
         </li>
         <li>
           <strong>Question 3</strong>
-          <p>This would make the temperature readings more precise, but it would require changing the numbers in the map function. Instead of using 1023 because there are 1024 possibilites with 10 bit code(2^10), the number would have to be 65536 instead because there are more possibilites (2^16).</p>
+          <p>Do what I did in this code, which is to take an average reading and report out the average reading.
+            reading 1 = first temperature reading
+            reading 2 = second temperature reading
+            reading 3 = third temperature reading
+
+            average = (reading 1 + reading 2 + reading 3) / 3
+            print (average)
+            </p>
         </li>
         <li>
           <strong>AI mark</strong>
-          <p>I used Ai to ask questions and fix some of the issues in my work. I also used AI to write part of the code(it is marked), and I also used it to help add the average temperature reading, which was needed since the temperature reading kept flickering without it, the avg made it more consisent.</p>
+          <p>I tried to use AI to help teach me what I need to do for the physical part of the project, but it was unhelpful. I used various youtube tutorials and combined the knowledge instead. AI was helpful for the coding part and I used it to help write my code. (and fix errors in it)</p>
         </li>
       </ol>
     </section>
