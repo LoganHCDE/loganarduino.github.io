@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, maximum-scale=1.0" />
+
+    <title>Logan's HCDE 439 Physical Computing Page!</title>
+
+    <link href="style.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body>
+    <h1>Logan's Assignment 5!</h1>
+    <div class="header">
+      <p>Here is all the documentation for assignment 5!</p>
+    </div>
+    <section class="gallery">
+      <figure>
+        <img src="setup_5.jpg" alt="Setup photo" />
+        <figcaption>Setup of arduino board</figcaption>
+      </figure>
+      <figure>
+        <img src="schematic_5.jpg" alt="Schematic" style="max-width: 400px; height: auto; display: block;" />
+        <figcaption>Schematic </figcaption>
+      </figure>
+      <figure>
+        <!-- Use an <img> for animated GIFs so they display correctly in browsers -->
+        <img src="a5_gif.gif" alt="Temperature sensor triggering fan (animated)" style="max-width:100%; height:auto; display:block;" />
+        <figcaption>video of temperature sensor reaching threshold for fan to start spinning</figcaption>
+      </figure>
+    </section>
+    <section class="code-used">
+        <pre><code>
+
+            <h2>Code used</h2>#include "DHT.h"
+
+//Set DHT pin
+#define DHTPIN 2
+
+// Set DHT type
+#define DHTTYPE DHT11
+
+//Set mosfet pin
+#define MOTOR_PIN 9
+
+
+// create DHT object
+DHT dht(DHTPIN, DHTTYPE);
+
+//fan won't spin if under this temperature
+const float TEMP_MIN = 26.0; 
+
+//fan will be at mix spin at or above this temperature
+const float TEMP_MAX = 30.0;
+
+void setup() {
+  //get diagnostics
+  Serial.begin(9600);
+  
+  //shows program started in diagnostics terminal
+  Serial.println("DHT11 Fan Controller Initialized");
+
+  // starts dht 11 sensor
+  dht.begin();
+
+// set motor pin as output
+  pinMode(MOTOR_PIN, OUTPUT);
+}
+
+void loop() {
+  // set two second interval between sensor readings
+  delay(2000);
+
+  // save temperature value
+  float t = dht.readTemperature();
+
+  // pass/fail for temperature data
+  if (isnan(t)) {
+    // print fail for DHT temperature reading
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+
+
+// Variable for storing fan speed
+  int fanSpeed;
+
+// setup fanspeed range
+  fanSpeed = map(t, TEMP_MIN, TEMP_MAX, 0, 255);
+
+// keeps fan speed in between the paramaters. 
+  fanSpeed = constrain(fanSpeed, 0, 255);
+
+
+//sends fan speed to motor
+  analogWrite(MOTOR_PIN, fanSpeed);
+
+  // Prints temperature for diagnostics
+  Serial.print("Temp: ");
+  Serial.print(t);
+
+  // Print celsius
+  Serial.print(" *C  |  ");
+  
+// prints fan speed for diagnostics
+  Serial.print("Fan Speed: ");
+  Serial.println(fanSpeed);
+}
+      </code></pre>
+    </section>
+    <section class="answers">
+      <h2>Answer to questions</h2>
+      <ol>
+        <li>
+          <strong>Question 1</strong>
+          <p> the absolute maximum between 2 and 3 is 80 amps</p>
+        <li>
+          <strong>Question 2</strong>
+            <img src="question_2_schematic.jpg" alt="question 2 graph" />
+            <figcaption>question 2 schematic</figcaption>
+            <p>parts:
+                Arduino Uno Rev3
+                Mabuchi RS-385SH for the DC motor
+                IRLZ44N for the N-mosfet
+                1N4007 for the flyback diode
+            </p>
+        </li>
+        <li>
+          <strong>Question 3</strong>
+            <img src="question_3_schematic.jpg" alt="question 3 graph" />
+            <figcaption>question 3 schematic</figcaption>
+            <p> pseudocode:
+// Motor control function
+function drive(motor, direction):
+    if motor == 1:
+        pins = [M1_EN, M1_IN1, M1_IN2]
+    else:
+        pins = [M2_EN, M2_IN1, M2_IN2]
+    
+    digitalWrite(pins[0], HIGH)
+    if direction == "forward":
+        digitalWrite(pins[1], HIGH); digitalWrite(pins[2], LOW)
+    else: 
+        digitalWrite(pins[1], LOW); digitalWrite(pins[2], HIGH)
+
+drive(1, "forward"); drive(2, "forward")     // Both forward
+drive(1, "backward"); drive(2, "backward")   // Both backward
+drive(1, "forward"); drive(2, "backward")    // M1 forward, M2 backward
+drive(1, "backward"); drive(2, "forward")    // M1 backward, M2 forward
+            </p>
+        </li>
+        <li>
+          <strong>AI mark</strong>
+          <p>gemini helped me with starting the initial layout of the bread board, and I had to do allot of troubelshooting for it to actually work. AI was helpful for the coding part and I used it to help write my code. (and fix errors in it)</p>
+        </li>
+      </ol>
+    </section>
+  </body>
+</html>
