@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, maximum-scale=1.0" />
+
+    <title>Logan's HCDE 439 Physical Computing Page!</title>
+
+    <link href="style.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body>
+    <h1>Logan's Assignment 6!</h1>
+    <div class="header">
+      <p>Here is all the documentation for assignment 6!</p>
+    </div>
+    <section class="gallery">
+      <figure>
+        <img src="setup_6.jpg" alt="Setup photo" />
+        <figcaption>Setup of arduino board</figcaption>
+      </figure>
+      <figure>
+        <img src="a6_schematic_graph.jpg" alt="Schematic" style="max-width: 400px; height: auto; display: block;" />
+        <figcaption>Schematic </figcaption>
+      </figure>
+      <figure>
+        <!-- Use an <img> for animated GIFs so they display correctly in browsers -->
+        <img src="a6_giffy.gif" alt="Temperature sensor triggering fan (animated)" style="max-width:100%; height:auto; display:block;" />
+        <figcaption>Video shows the server connecting to the arduino, the arduino button being pressed to allow audio to be captured, the RGB value being changed from the website and implemented on the arduino, and the sound sensor showing vibrations on the website.</figcaption>
+      </figure>
+    </section>
+    <section class="code-used">
+        <pre><code>
+
+            <h2>Code used arduino</h2>
+// Set Microphone pin
+const int MIC_PIN = A0;
+
+// int for pin 2, Button.
+const int BTN_PIN = 2; 
+
+// int for pin 9, red light.
+const int RED_PIN = 9;
+
+// int for pin 10, green light.
+const int GREEN_PIN = 10;
+
+// constant for pin 11, blue light.
+const int BLUE_PIN = 11;
+
+
+// variable to check if mic is listening
+bool isListening = false;      
+
+// save button state
+bool lastBtnState = HIGH;      
+
+// variable for debounce timer
+unsigned long lastDebounce = 0;
+
+
+// User selected red color
+int userR = 255;
+
+// User selected green color
+int userG = 140;
+
+// User selected blue color
+int userB = 0;
+
+
+// Flash Timer variable
+unsigned long flashTimer = 0; 
+
+// variable to check if lights should flash
+bool isFlashing = false;
+
+
+// The setup() function
+void setup() {
+  // get diagnostics
+  Serial.begin(57600); 
+  
+  // set mic pin as input
+  pinMode(MIC_PIN, INPUT);
+
+  // button setup
+  pinMode(BTN_PIN, INPUT_PULLUP); 
+  
+  // set red pin as output
+  pinMode(RED_PIN, OUTPUT);
+
+  // set green pin as output
+  pinMode(GREEN_PIN, OUTPUT);
+
+  // set blue pin as output
+  pinMode(BLUE_PIN, OUTPUT);
+}
+
+
+// The loop() function runs continuously
+void loop() {
+  
+  // see if button is High or Low
+  int reading = digitalRead(BTN_PIN);
+
+  // Check if the button state changed and enough time passed
+  if (reading != lastBtnState && millis() - lastDebounce > 50) {
+    
+    // reset debounce timer
+    lastDebounce = millis();
+    
+    // check if button is pressed down
+    if (reading == LOW) {
+      // toggle listening state
+      isListening = !isListening; 
+    }
+  }
+  
+  // save the current reading
+  lastBtnState = reading;
+
+
+  // Variable for storing peak volume
+  int peakToPeak = 0;
+  
+  // check if we are in listening mode
+  if (isListening) {
+      // save start time
+      unsigned long startMillis = millis(); 
+      
+      // variable for max signal
+      unsigned int signalMax = 0;
+      
+      // variable for min signal
+      unsigned int signalMin = 1024;
+      
+      // Listen for 50ms
+      while (millis() - startMillis < 50) {
+        // read mic value
+        int sample = analogRead(MIC_PIN);
+        
+        // check if sample is valid
+        if (sample < 1024) { 
+           
+           // check if this is a new max
+           if (sample > signalMax) {
+              // save max value
+              signalMax = sample;
+           }
+           // check if this is a new min
+           else if (sample < signalMin) {
+              // save min value
+              signalMin = sample;
+           }
+        }
+      }
+      // calculate peak to peak difference
+      peakToPeak = signalMax - signalMin; 
+  } else {
+      // set peak to 0 if not listening
+      peakToPeak = 0;
+  }
+
+
+  // send json to let server know a connection has been established
+  Serial.print("{\"active\":");
+  
+  // send active status
+  Serial.print(isListening);
+  
+  // send volume label
+  Serial.print(", \"vol\":");
+  
+  // send volume level
+  Serial.print(peakToPeak);
+  
+  // send json end
+  Serial.println("}");
+
+
+  // check if data is coming from web
+  if (Serial.available() > 0) {
+    // read string until newline
+    String cmd = Serial.readStringUntil('\n');
+    
+    // remove whitespace
+    cmd.trim(); 
+
+    // check if command starts with P
+    if (cmd.startsWith("P")) {
+      // turn on flashing
+      isFlashing = true;
+      
+      // set flash timer
+      flashTimer = millis();
+    } 
+    // check if command starts with C
+    else if (cmd.startsWith("C")) {
+      // find first comma
+      int firstComma = cmd.indexOf(',');
+      
+      // find second comma
+      int secondComma = cmd.indexOf(',', firstComma + 1);
+      
+      // find third comma
+      int thirdComma = cmd.indexOf(',', secondComma + 1);
+
+      // check if all commas exist
+      if (firstComma > 0 && secondComma > 0 && thirdComma > 0) {
+        // get red string
+        String rStr = cmd.substring(firstComma + 1, secondComma);
+        
+        // get green string
+        String gStr = cmd.substring(secondComma + 1, thirdComma);
+        
+        // get blue string
+        String bStr = cmd.substring(thirdComma + 1);
+
+        // convert string to int for red
+        userR = rStr.toInt();
+        
+        // convert string to int for green
+        userG = gStr.toInt();
+        
+        // convert string to int for blue
+        userB = bStr.toInt();
+      }
+    }
+  }
+
+
+  // LED Control Logic
+  
+  // check if flashing mode is on
+  if (isFlashing) {
+    // set color to blue
+    setRGB(0, 0, 255); 
+    
+    // check if flash time is over
+    if (millis() - flashTimer > 300) isFlashing = false;
+  } 
+  // check if listening mode is on
+  else if (isListening) {
+    // set user defined color
+    setRGB(userR, userG, userB);
+  } 
+  // otherwise
+  else {
+    // set to red
+    setRGB(255, 0, 0); 
+  }
+}
+
+
+// function to set RGB color with correction
+void setRGB(int r, int g, int b) {
+  
+  // reduces mid-tones so colors dont look washed out
+  
+  // calculate corrected red
+  int r_corrected = (r * r) / 255;
+  
+  // calculate corrected green
+  int g_corrected = (g * g) / 255;
+  
+  // calculate corrected blue
+  int b_corrected = (b * b) / 255;
+  
+  // writes value to red pin
+  analogWrite(RED_PIN, r_corrected);
+
+  // writes value to green pin
+  analogWrite(GREEN_PIN, g_corrected);
+
+  // writes value to blue pin
+  analogWrite(BLUE_PIN, b_corrected);
+}
+      </code></pre>
+      <pre><code>
+        &lt;p&gt;html code&lt;/p&gt;
+        &lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+  &lt;head&gt;
+    &lt;meta charset="utf-8" /&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+    &lt;title&gt;Logan a6&lt;/title&gt;
+    
+    &lt;!-- Load p5.js Core Library --&gt;
+    &lt;script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.js"&gt;&lt;/script&gt;
+    
+    &lt;style&gt;
+      body {
+        padding: 0;
+        margin: 0;
+        background-color: #1a1a1a;
+        color: #ccc;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        height: 100vh;
+      }
+
+      header {
+        width: 100%;
+        max-width: 600px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 20px;
+        background: #333;
+        border-bottom: 2px solid #555;
+        box-sizing: border-box;
+        margin-bottom: 10px;
+      }
+
+      .status-indicator {
+        font-size: 12px;
+        font-weight: bold;
+        padding: 4px 8px;
+        border-radius: 4px;
+        background: #444;
+        color: #888;
+      }
+
+      .status-indicator.connected {
+        background: #2ecc71;
+        color: #000;
+      }
+
+      .logo {
+        font-weight: bold;
+        letter-spacing: 2px;
+        color: #fff;
+      }
+
+      main {
+        border: 4px solid #444;
+        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        background: #000;
+      }
+
+      .controls {
+        margin-top: 15px;
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        background: #222;
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: 1px solid #444;
+      }
+
+      label { font-size: 14px; margin-right: 10px; }
+
+      input[type="color"] {
+        border: none;
+        width: 40px;
+        height: 40px;
+        cursor: pointer;
+        background: none;
+      }
+
+      button {
+        padding: 8px 16px;
+        background: #555;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      button:hover { background: #777; }
+    &lt;/style&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+
+    &lt;header&gt;
+      &lt;div class="logo"&gt;APERTURE LABS&lt;/div&gt;
+      &lt;div id="connection-status" class="status-indicator"&gt;DISCONNECTED&lt;/div&gt;
+    &lt;/header&gt;
+
+    &lt;main&gt;
+      &lt;!-- p5.js Canvas Here --&gt;
+    &lt;/main&gt;
+
+    &lt;div class="controls"&gt;
+      &lt;div&gt;
+        &lt;label for="colorPicker"&gt;Core Personality Color:&lt;/label&gt;
+        &lt;input type="color" id="colorPicker" value="#ff8c00"&gt;
+      &lt;/div&gt;
+      &lt;button id="connectBtn"&gt;CONNECT USB&lt;/button&gt;
+    &lt;/div&gt;
+
+    &lt;script src="sketch.js"&gt;&lt;/script&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+
+
+<p>sketch.js code</p>
+// ==========================================
+// PART 1: SERIAL DRIVER (INTERNAL)
+// ==========================================
+class SerialHandler {
+  
+  // class constructor
+  constructor() {
+    // initialize port variable
+    this.port = null;
+    
+    // initialize reader variable
+    this.reader = null;
+    
+    // create text encoder
+    this.encoder = new TextEncoder(); 
+    
+    // create text decoder
+    this.decoder = new TextDecoder(); 
+    
+    // string buffer for inputs
+    this.inputBuffer = "";
+    
+    // connection status flag
+    this.isConnected = false;
+    
+    // variable for data callback
+    this.onDataCallback = null;
+    
+    // variable for connect callback
+    this.onConnectCallback = null;
+    
+    // variable for disconnect callback
+    this.onDisconnectCallback = null;
+  }
+
+  // method to register event callbacks
+  on(event, callback) {
+    // check if event is data
+    if (event === 'data') this.onDataCallback = callback;
+    
+    // check if event is open
+    if (event === 'open') this.onConnectCallback = callback;
+    
+    // check if event is close
+    if (event === 'close') this.onDisconnectCallback = callback;
+  }
+
+  // asynchronous function to open port
+  async openPort() {
+    // check if browser supports serial
+    if (!navigator.serial) {
+      // show alert if not supported
+      alert("WebSerial is not supported in this browser. Please use Chrome, Edge, or Opera.");
+      
+      // exit function
+      return;
+    }
+    
+    // try block for connection
+    try {
+      // request port from user
+      this.port = await navigator.serial.requestPort();
+      
+      // open port with specific baud rate
+      await this.port.open({ baudRate: 57600 }); 
+      
+      // set connected flag to true
+      this.isConnected = true;
+      
+      // trigger connect callback if exists
+      if (this.onConnectCallback) this.onConnectCallback();
+      
+      // start reading loop
+      this.readLoop();
+    } catch (err) {
+      // log error to console
+      console.error("Error opening port:", err);
+    }
+  }
+
+  // async function to write data
+  async write(data) {
+    // check if port is writable
+    if (this.port && this.port.writable) {
+      // get the writer
+      const writer = this.port.writable.getWriter();
+      
+      // write encoded data
+      await writer.write(this.encoder.encode(data));
+      
+      // release the lock
+      writer.releaseLock();
+    }
+  }
+
+  // async loop to read data
+  async readLoop() {
+    // loop while readable and connected
+    while (this.port.readable && this.isConnected) {
+      // get the reader
+      this.reader = this.port.readable.getReader();
+      
+      // try block for reading
+      try {
+        // infinite loop for stream
+        while (true) {
+          // read value and done state
+          const { value, done } = await this.reader.read();
+          
+          // check if stream is done
+          if (done) break;
+          
+          // check if value exists
+          if (value) {
+            // decode and append to buffer
+            this.inputBuffer += this.decoder.decode(value);
+            
+            // process the buffer
+            this.processBuffer();
+          }
+        }
+      } catch (error) {
+        // log read error
+        console.error("Read error:", error);
+        
+        // set connected flag to false
+        this.isConnected = false; 
+        
+        // trigger disconnect callback
+        if (this.onDisconnectCallback) this.onDisconnectCallback();
+      } finally {
+        // release reader lock
+        this.reader.releaseLock();
+      }
+    }
+    // set connected flag to false
+    this.isConnected = false; 
+    
+    // trigger disconnect callback
+    if (this.onDisconnectCallback) this.onDisconnectCallback();
+  }
+
+  // function to process buffer lines
+  processBuffer() {
+    // split buffer by newlines
+    let lines = this.inputBuffer.split('\r\n');
+    
+    // save partial line back to buffer
+    this.inputBuffer = lines.pop(); 
+    
+    // loop through complete lines
+    for (let line of lines) {
+      // check if line has content and callback exists
+      if (line.trim().length > 0 && this.onDataCallback) {
+        // call data callback with line
+        this.onDataCallback(line);
+      }
+    }
+  }
+  
+  // check if connected
+  opened() { return this.isConnected; }
+}
+
+// ==========================================
+// PART 2: MAIN APP LOGIC
+// ==========================================
+
+// serial handler instance
+let serial; 
+
+// object to store sensor values
+let sensorData = { active: 0, vol: 0 }; 
+
+// DOM Element variables
+let colorPicker;
+let connectBtn;
+let statusDiv;
+
+// Visuals variables
+let pupilSize = 50;
+let currentEyeColor; 
+
+// Setup function runs once
+function setup() {
+  // create canvas
+  createCanvas(600, 400);
+  
+  // initialize serial handler
+  serial = new SerialHandler();
+  
+  // set data callback
+  serial.on('data', gotData);
+  
+  // set open callback
+  serial.on('open', () => updateStatus(true));
+  
+  // set close callback
+  serial.on('close', () => updateStatus(false));
+
+  // --- BUTTON SETUP ---
+  
+  // select connect button
+  connectBtn = select('#connectBtn');
+  
+  // set mouse pressed event
+  connectBtn.mousePressed(() => {
+    // try to open port
+    if (serial) serial.openPort();
+  });
+  
+  // select color picker
+  colorPicker = select('#colorPicker');
+  
+  // select status div
+  statusDiv = select('#connection-status');
+
+  // set color input event
+  colorPicker.input(updateColor);
+  
+  // set initial eye color
+  currentEyeColor = color(colorPicker.value());
+  
+  // set text alignment
+  textAlign(CENTER);
+}
+
+// Draw function runs continuously
+function draw() {
+  // --- 1. HANDLE CONNECTION SCREEN ---
+  
+  // check if not connected
+  if (!serial || !serial.opened()) {
+    // set background to dark gray
+    background(30);
+    
+    // set fill color
+    fill(100);
+    
+    // set text size
+    textSize(20);
+    
+    // draw waiting text
+    text("WAITING FOR DEVICE...", width/2, height/2);
+    
+    // set smaller text size
+    textSize(14);
+    
+    // draw instruction text
+    text("Click 'CONNECT USB' below", width/2, height/2 + 30);
+    
+    // exit draw function
+    return; 
+  }
+
+  // --- 2. HANDLE LISTENING STATE ---
+  
+  // check if sensor is active
+  if (sensorData.active == 1) {
+    // set background to dark
+    background(20);
+    
+    // draw grid lines
+    drawGrid();
+
+    // === PUPIL FIX ===
+    // 1. Clamp the volume so it never thinks it's higher than 300 (even if mic hits 420)
+    // 2. Map max size to 220 (Iris is 250, so this leaves a colored ring)
+    
+    // constrain volume value
+    let clampedVol = constrain(sensorData.vol, 0, 300);
+    
+    // map volume to size
+    let targetSize = map(clampedVol, 0, 300, 60, 220);
+    
+    // Smoothing logic
+    
+    // lerp pupil size for smooth animation
+    pupilSize = lerp(pupilSize, targetSize, 0.05); 
+
+    // draw the eye
+    drawEye(width/2, height/2, pupilSize, currentEyeColor);
+    
+    // Vertical Volume Meter (Right Side)
+    
+    // draw volume meter
+    drawVolumeMeter(width - 60, height/2, sensorData.vol, currentEyeColor);
+    
+    // set fill to green
+    fill(0, 255, 0);
+    
+    // disable stroke
+    noStroke();
+    
+    // set text size
+    textSize(14);
+    
+    // draw detected text
+    text("AUDIO INPUT DETECTED", width/2, height - 10);
+
+  } else {
+    // === MUTED ===
+    
+    // set background to red tint
+    background(50, 0, 0); 
+    
+    // enable stroke
+    stroke(0);
+    
+    // set stroke weight
+    strokeWeight(5);
+    
+    // set fill color
+    fill(80, 0, 0);
+    
+    // draw background circle
+    ellipse(width/2, height/2, 200, 200);
+    
+    // draw crossed line
+    line(width/2 - 80, height/2, width/2 + 80, height/2);
+    
+    // disable stroke
+    noStroke();
+    
+    // set fill to white
+    fill(255);
+    
+    // set text size
+    textSize(20);
+    
+    // draw privacy mode text
+    text("PRIVACY MODE ACTIVE", width/2, height/2 - 120);
+    
+    // set text size
+    textSize(14);
+    
+    // draw explanation text
+    text("Microphone Disabled via Physical Switch", width/2, height/2 + 140);
+  }
+}
+
+// --- HELPER FUNCTIONS ---
+
+// function to draw eye
+function drawEye(x, y, size, c) {
+  // disable stroke
+  noStroke();
+  
+  // set fill for sclera
+  fill(245); // Sclera (280px)
+  
+  // draw sclera
+  ellipse(x, y, 280, 280);
+  
+  // set fill for iris
+  fill(c); // Iris (250px)
+  
+  // draw iris
+  ellipse(x, y, 250, 250);
+  
+  // set fill for pupil
+  fill(0); // Pupil (Dynamic size)
+  
+  // draw pupil
+  ellipse(x, y, size, size);
+  
+  // set fill for glint
+  fill(255, 200); // Glint
+  
+  // draw glint
+  ellipse(x - 40, y - 40, 30, 30);
+}
+
+// function to draw volume meter
+function drawVolumeMeter(cx, cy, vol, c) {
+  // 1. Draw Meter Background
+  
+  // disable stroke
+  noStroke();
+  
+  // set fill color
+  fill(40);
+  
+  // set rect mode center
+  rectMode(CENTER);
+  
+  // set meter width
+  let meterWidth = 30;
+  
+  // set meter height
+  let meterHeight = 150; 
+  
+  // draw background rect
+  rect(cx, cy, meterWidth, meterHeight, 5); 
+
+  // 2. Calculate Fill Height
+  // We constrain here too just to be safe for the graphics
+  
+  // calculate height based on volume
+  let fillHeight = map(constrain(vol, 0, 300), 0, 300, 0, meterHeight);
+
+  // 3. Draw the Fill
+  
+  // set fill color
+  fill(c);
+  
+  // draw fill rect
+  rect(cx, (cy + meterHeight/2) - (fillHeight/2), meterWidth, fillHeight, 5);
+
+  // 4. Draw Numeric Text
+  
+  // set fill white
+  fill(255);
+  
+  // set text size
+  textSize(12);
+  
+  // draw label
+  text("LEVEL", cx, cy + meterHeight/2 + 20);
+  
+  // draw volume number
+  text(int(vol), cx, cy + meterHeight/2 + 35);
+}
+
+// function to update color
+function updateColor() {
+  // get hex value
+  let hexVal = colorPicker.value();
+  
+  // set current color
+  currentEyeColor = color(hexVal);
+  
+  // get red component
+  let r = red(currentEyeColor);
+  
+  // get green component
+  let g = green(currentEyeColor);
+  
+  // get blue component
+  let b = blue(currentEyeColor);
+  
+  // check if serial is open
+  if (serial && serial.opened()) {
+    // format string
+    let dataStr = `C,${int(r)},${int(g)},${int(b)}\n`;
+    
+    // write to serial
+    serial.write(dataStr);
+  }
+}
+
+// function to update status UI
+function updateStatus(connected) {
+  // get button element
+  let btn = document.getElementById('connectBtn');
+  
+  // check if connected
+  if (connected) {
+    // update status text
+    statusDiv.html("DEVICE CONNECTED");
+    
+    // add connected class
+    statusDiv.addClass('connected');
+    
+    // update button text
+    if(btn) btn.innerText = "DISCONNECT";
+    
+    // update color
+    updateColor();
+  } else {
+    // update status text
+    statusDiv.html("DISCONNECTED");
+    
+    // remove connected class
+    statusDiv.removeClass('connected');
+    
+    // update button text
+    if(btn) btn.innerText = "CONNECT USB";
+  }
+}
+
+// function to handle data
+function gotData(line) {
+  // try block for parsing
+  try {
+    // parse JSON data
+    sensorData = JSON.parse(line);
+  } catch (e) { }
+}
+
+// function for mouse press
+function mousePressed() {
+  // check mouse position and serial
+  if (mouseY > 0 && mouseY < height && serial && serial.opened()) {
+    // send ping command
+    serial.write('P\n');
+  }
+}
+
+// function to draw background grid
+function drawGrid() {
+  // set stroke color
+  stroke(255, 20);
+  
+  // set stroke weight
+  strokeWeight(1);
+  
+  // loop for vertical lines
+  for(let i=0; i&lt;width; i+=40) line(i,0, i, height);
+  
+  // loop for horizontal lines
+  for(let i=0; i&lt;height; i+=40) line(0,i, width, i);
+}
+        </code></pre>
+
+    
+    </section>
+        </li>
+        <li>
+          <strong>AI mark</strong>
+          <p>Gemini Helped me to write the code for the p5.js website and arduino code. I had to do allot of debugging to get it to actually work but it was very helpful for getting started. I had it help me get my materials list and format what I wanted into helpful lists for the physical part of the project.</p>
+      </ol>
+    </section>
+  </body>
+</html>
