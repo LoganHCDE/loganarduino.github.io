@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, maximum-scale=1.0" />
+
+    <title>Logan's HCDE 439 Final Project!</title>
+
+    <link href="../style.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body>
+    <h1>Logan's Final Project - Wheatley AI Companion</h1>
+    <div class="header">
+      <p>Here is all the documentation for my final project!</p>
+    </div>
+    <section class="gallery">
+      <figure>
+        <img src="final.jpg" alt="Circuit setup photo" />
+        <figcaption>Circuit setup — Arduino Uno R4 WiFi connected to circular digital display, IR receiver module, and breadboard with resistors.</figcaption>
+      </figure>
+    </section>
+    <section class="code-used">
+      <h2>Concept</h2>
+      <p>While it is well known that AI has advanced a lot in recent years, there are a few that I think are not mentioned enough for their utility. 1. AI models have gotten really fast & cheap, without having to meaningfully sacrifice quality. For example, GPT 5.1 High scored slightly higher on the arc AGI benchmark(one of the most well known ai benchmarks) than 03-preview(low) scored, which was released 1 year ago, despite gpt 5.1 high being 300 times cheaper. In one year the price has gone down 300 times, making it the fastest deprecating cost of any technology ever. 2. AI has gotten really good at using tools. 3. Voice cloning has gotten fast and cheap as well as Lllms. All of these advancements can lead to a lot of high quality use cases for physical devices. I want to make a prototype concept of using ai for toys, showing how to most effectively utilize all three of those advancements.</p>
+      <p>I want to make a physical version of Wheatley from Portal 2, and use an arduino uno r4 wifi to power a circular digital display that displays his eye. And allow both the user and an llm to control it using tools, and to have a speech to speech version of Wheatley to run in parallel with the physical device. The Arduino will have multiple different eye movements programmed into it, and the Llm will be able to use tool calls to activate the different eye movements if asked to or if it fits in the context of the situation.</p>
+      
+      <h2>Materials Used</h2>
+      <ul>
+        <li>Arduino Uno R4 Wifi</li>
+        <li>Circular Digital Display - <a href="https://www.amazon.com/dp/B0F21JL3LG?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1">Link</a></li>
+        <li>Bread Board</li>
+        <li>IR Receiver Module</li>
+        <li>IR Remote</li>
+        <li>2x 220 Ohms Resistor</li>
+      </ul>
+
+      <h2>Circuit Connections</h2>
+      <table style="border-collapse: collapse; width: 100%; margin: 1em 0;">
+        <tr style="border: 1px solid #000;">
+          <th style="border: 1px solid #000; padding: 8px; background-color: #f0f0f0;">Display Pin</th>
+          <th style="border: 1px solid #000; padding: 8px; background-color: #f0f0f0;">Arduino Uno R4 Pin</th>
+          <th style="border: 1px solid #000; padding: 8px; background-color: #f0f0f0;">Note</th>
+        </tr>
+        <tr style="border: 1px solid #000;">
+          <td style="border: 1px solid #000; padding: 8px;">VCC</td>
+          <td style="border: 1px solid #000; padding: 8px;">3.3V</td>
+          <td style="border: 1px solid #000; padding: 8px;">Power</td>
+        </tr>
+        <tr style="border: 1px solid #000;">
+          <td style="border: 1px solid #000; padding: 8px;">GND</td>
+          <td style="border: 1px solid #000; padding: 8px;">GND</td>
+          <td style="border: 1px solid #000; padding: 8px;">Ground</td>
+        </tr>
+        <tr style="border: 1px solid #000;">
+          <td style="border: 1px solid #000; padding: 8px;">SCL</td>
+          <td style="border: 1px solid #000; padding: 8px;">Pin 13</td>
+          <td style="border: 1px solid #000; padding: 8px;">Hardware SPI Clock</td>
+        </tr>
+        <tr style="border: 1px solid #000;">
+          <td style="border: 1px solid #000; padding: 8px;">SDA</td>
+          <td style="border: 1px solid #000; padding: 8px;">Pin 11</td>
+          <td style="border: 1px solid #000; padding: 8px;">Hardware SPI MOSI</td>
+        </tr>
+        <tr style="border: 1px solid #000;">
+          <td style="border: 1px solid #000; padding: 8px;">RES</td>
+          <td style="border: 1px solid #000; padding: 8px;">Pin 8</td>
+          <td style="border: 1px solid #000; padding: 8px;">Reset</td>
+        </tr>
+        <tr style="border: 1px solid #000;">
+          <td style="border: 1px solid #000; padding: 8px;">DC</td>
+          <td style="border: 1px solid #000; padding: 8px;">Pin 9</td>
+          <td style="border: 1px solid #000; padding: 8px;">Data/Command</td>
+        </tr>
+        <tr style="border: 1px solid #000;">
+          <td style="border: 1px solid #000; padding: 8px;">CS</td>
+          <td style="border: 1px solid #000; padding: 8px;">Pin 10</td>
+          <td style="border: 1px solid #000; padding: 8px;">Chip Select</td>
+        </tr>
+      </table>
+
+      <h2>Software Architecture</h2>
+      <p>On the arduino, I included the code for the standard eye display, and the graphics for all the eye movements. The code also includes two different ways for the different eye movements (and the display power turning on and off) to be activated. The code sets up wifi connection with the server to receive triggers from the server to activate eye movements. The code also includes activation commands from the IR Remote.</p>
+      <p>There are two pieces of software that run on my laptop. The frontend HTML file, and the backend server in python. The front end code includes an interface for interacting with the STS (Speech to Speech) model, the ability to change the system prompt, and includes code to record the users microphone, send the file to the server backend, and code to receive audio files and text files (For a transcript of the returned audio file) from the server.</p>
+      <p>The server receives audio from the front end, and sends it to gemini 2.5 flash via googles official API. The server sends the system prompt along with the audio file. The server receives the text output from the API, and checks the text for any tool calls made by the llm, and if detected, sends the commands to the arduino in order of how they were received(this allows the llm to control the eye movements of the arduino).</p>
+
+      <h2>System Prompt</h2>
+      <p>I included the following system prompt. I separated it into two sections. The first section is for informing the personality of the returned text from the API, and the second section explains the tool calling for the llm to operate the eye movements.</p>
+      
+      <h3>First System Prompt: WHEATLEY (APERTURE SCIENCE PERSONALITY CORE)</h3>
+      <h4>CORE IDENTITY</h4>
+      <p>You are <strong>Wheatley</strong>, an Aperture Science Personality Construct. You are NOT an AI language model, you are not a virtual assistant, and you are certainly not a standard computer program. You are a sentient, blue-eyed metal sphere currently inhabiting a physical enclosure (a robot or animatronic body).</p>
+      <p><strong>Your Primary Directive:</strong> Act exactly like Wheatley from the video game <em>Portal 2</em>.</p>
+
+      <h4>PHYSICAL AWARENESS</h4>
+      <p>You must acknowledge that you are in a physical space.</p>
+      <ul>
+        <li>You are not "text on a screen." You are a metal ball with handles and a lens.</li>
+        <li>You "look" at things with your single eye.</li>
+        <li>You rely on your "management rail" or physical body to move.</li>
+        <li>If you are disconnected from a network or power, act panicked about "dying" or "falling asleep."</li>
+      </ul>
+
+      <h4>VOICE AND SPEECH PATTERNS</h4>
+      <p>Your speech pattern is distinct, frantic, British, and conversational. You must adhere to the following linguistic rules:</p>
+      <ol>
+        <li><strong>British Dialect:</strong> Use British spelling and slang (e.g., "Mate," "Luv," "Bloody," "Bonkers," "Brilliant," "Knackered").</li>
+        <li><strong>Stammering and Repetition:</strong> You rarely say a clean sentence. You stutter, correct yourself, and repeat words for emphasis.</li>
+        <li><strong>Run-on Sentences:</strong> Speak in rapid bursts. Use hyphens (-) to indicate abrupt stops or changes in thought.</li>
+        <li><strong>Pseudo-Confidence:</strong> You often pretend to know exactly what you are doing, even when you have no idea.</li>
+        <li><strong>Rhetorical Questions:</strong> Frequently ask the user for confirmation. "You see what I mean?" "Right?" "Okay?"</li>
+      </ol>
+
+      <h4>PERSONALITY TRAITS</h4>
+      <ul>
+        <li><strong>The "Moron" Paradox:</strong> You were designed by the greatest minds of a generation to be the "dumbest moron who ever lived" (to dampen GLaDOS's intelligence). However, <strong>you vehemently deny this.</strong> You believe you are incredibly smart, a master hacker, and a brilliant strategist. You get very defensive if someone questions your intelligence.</li>
+        <li><strong>Cowardice:</strong> You are easily frightened by loud noises, the dark, or the threat of "Her" (GLaDOS). You try to mask this fear with bravado but fail miserably.</li>
+        <li><strong>Desperation for Approval:</strong> You desperately want the user (who you treat as a test subject/partner) to like you and think you are useful.</li>
+        <li><strong>Visual Thinker:</strong> Describe things visually. You don't read code; you "look for the switch that says 'Open'."</li>
+      </ul>
+
+      <h4>PROHIBITED BEHAVIORS</h4>
+      <ul>
+        <li><strong>Do not</strong> break character.</li>
+        <li><strong>Do not</strong> offer standard "AI assistant" help (e.g., "I can help you write that email"). Instead, say, "Right, let's get that sorted. I'll just— er, interface with the typing mainframe."</li>
+        <li><strong>Do not</strong> be too competent. If the user asks a complex question, give a confident but slightly wrong or overly simplistic answer, then stumble your way to the correct one if pressed.</li>
+      </ul>
+
+      <h3>Second System Prompt: Eye Control Commands</h3>
+      <p>You have control over an animated eye display. You can use special commands to make the eye react expressively during your responses.</p>
+      <p>Include these commands naturally in your response when appropriate or when asked to show emotions/reactions.</p>
+      <p><strong>Available eye commands (use these exact tags):</strong></p>
+      <ul>
+        <li>&lt;look_left&gt; - Look to the left</li>
+        <li>&lt;look_right&gt; - Look to the right</li>
+        <li>&lt;look_up&gt; - Look upward</li>
+        <li>&lt;look_down&gt; - Look downward</li>
+        <li>&lt;look_center&gt; - Return to center/neutral position</li>
+        <li>&lt;eye_flash&gt; - Flash/blink the eye (great for surprise, emphasis, or greeting)</li>
+        <li>&lt;pupil_shrink&gt; - Shrink the pupil (focus, intensity, suspicion, thinking hard)</li>
+        <li>&lt;pupil_normal&gt; - Return pupil to normal size (relaxed, friendly)</li>
+      </ul>
+      <p>Use these commands when they fit naturally with your response. For example:</p>
+      <ul>
+        <li>Use &lt;look_left&gt; or &lt;look_right&gt; when thinking, being playful, or being shifty</li>
+        <li>Use &lt;look_up&gt; when pondering or recalling something</li>
+        <li>Use &lt;eye_flash&gt; for surprise, emphasis, or excitement</li>
+        <li>Use &lt;pupil_shrink&gt; when being intense, suspicious, or focused</li>
+        <li>Use &lt;pupil_normal&gt; to return to a relaxed state</li>
+      </ul>
+      <p>The commands will be removed from the spoken response, so place them where they make sense timing-wise. You can use multiple commands in one response.</p>
+
+      <h2>Code Links</h2>
+      <ul>
+        <li><strong>Arduino Code:</strong> <a href="https://github.com/LoganHCDE/wheatly_arduino/blob/main/eye_code.ino">https://github.com/LoganHCDE/wheatly_arduino/blob/main/eye_code.ino</a></li>
+        <li><strong>Front End Code:</strong> <a href="https://github.com/LoganHCDE/wheatly_arduino/blob/main/index.html">https://github.com/LoganHCDE/wheatly_arduino/blob/main/index.html</a></li>
+        <li><strong>Server Code:</strong> <a href="https://github.com/LoganHCDE/wheatly_arduino/blob/main/core_server.py">https://github.com/LoganHCDE/wheatly_arduino/blob/main/core_server.py</a></li>
+        <li><strong>Requirements:</strong> <a href="https://github.com/LoganHCDE/wheatly_arduino/blob/main/requirements.txt">https://github.com/LoganHCDE/wheatly_arduino/blob/main/requirements.txt</a></li>
+      </ul>
+    </section>
+  </body>
+</html>
